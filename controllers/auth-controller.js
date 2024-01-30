@@ -1,10 +1,11 @@
 const prisma = require("../models/prisma");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const tryCatch = require("../utils/tryCatch");
 
-const tryCatch = (func) => (req, res, next) => func(req, res, next).catch(next);
+// const tryCatch = (func) => (req, res, next) => func(req, res, next).catch(next);
 
-const secret = process.env.SECRET;
+const jwtSecret = process.env.SECRET;
 
 module.exports.register = tryCatch(async (req, res, next) => {
   const { s_code, firstName, password, confirmPassword, email } = req.body;
@@ -24,19 +25,28 @@ module.exports.register = tryCatch(async (req, res, next) => {
 
 exports.login = tryCatch(async (req, res, next) => {
   const { s_code, t_code, password } = req.body;
-  if (!((s_code || t_code) && password)) {
-    throw new Error("student code and password is required");
+  if (s_code && t_code) {
+    throw new Error("teacher or Student::400");
   }
-  const student = await prisma.student.findFirst({
-    where: {
-      s_code: s_code,
-    },
-  });
-  const decode = await bcrypt.compare(password, student.password);
-  if (!decode) throw new Error("s_code or password wrong");
-  const token = jwt.sign({ id: student.id, s_code: student.s_code }, secret, {
-    expiresIn: 60 * 60 * 24,
-  });
+  if (s_code && !/^[s]\d{3}$/.test(s_code))
+    throw new Error("wrong code format");
+  if (t_code && !/^[t]\d{3}$/.test(t_code))
+    throw new Error("wrong code format");
+  const result = t_code
+    ? await prisma.teacher.findFirstOrThrow({
+        where: { t_code },
+      })
+    : await prisma.student.findFirstOrThrow({ where: { s_code } });
+  const decode = await bcrypt.compare(password, result.password);
+  if (!decode) throw new Error(" password wrong");
+  const payload = t_code
+    ? { id: result.id, t_code: result.t_code }
+    : { id: result.id, s_code: result.s_code };
+  const token = jwt.sign(payload, jwtSecret, { expiresIn: 60 * 60 * 24 });
   const { password: pw, ...obj } = req.body;
   res.status(200).json({ ...obj, token });
 });
+
+exports.getMe = (req, res, next) => {
+  res.json({ user: req.user });
+};

@@ -17,6 +17,7 @@ module.exports = tryCatch(async (req, res, next) => {
         where: { s_code },
       });
   delete result.password;
+  result.role = t_code ? "teacher" : "student";
   req.user = result;
   next();
 });

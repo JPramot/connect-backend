@@ -28,7 +28,19 @@ body : none
 method : POST
 authen : t
 params : none
-body :{question,startDate,dueDate,subjectId,teacherId,published}
+body : {question,startDate,dueDate,subjectId,teacherId,published}
+
+/homework
+method : GET
+authen : t
+params : none
+body : none
+
+/homework
+method : PUT
+authen : t
+params : :id
+body : {question,startDate,dueDate,subjectId,teacherId,published}
 
 /subject
 method : GET
